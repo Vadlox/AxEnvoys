@@ -11,6 +11,7 @@ import com.artillexstudios.axapi.updatechecker.UpdateChecker;
 import com.artillexstudios.axapi.updatechecker.sources.ModrinthUpdateCheckSource;
 import com.artillexstudios.axapi.utils.StringUtils;
 import com.artillexstudios.axapi.utils.featureflags.FeatureFlags;
+import com.artillexstudios.axapi.utils.mutable.MutableBoolean;
 import com.artillexstudios.axenvoy.commands.EnvoyCommand;
 import com.artillexstudios.axenvoy.config.impl.Config;
 import com.artillexstudios.axenvoy.config.impl.Messages;
@@ -154,7 +155,12 @@ public final class AxEnvoyPlugin extends AxPlugin {
         new AxMetrics(this, 13).start();
 
         Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(() -> {
+            MutableBoolean failedToStart = new MutableBoolean(false);
             Envoys.getTypes().forEach((string, envoy) -> {
+                if (failedToStart.booleanValue()) {
+                    return;
+                }
+
                 if (envoy.getConfig().EVERY.isBlank() && envoy.getConfig().TIMES.isEmpty()) {
                     return;
                 }
@@ -186,6 +192,7 @@ public final class AxEnvoyPlugin extends AxPlugin {
 
                     envoy.setStartAttempt(true);
                     if (Bukkit.getOnlinePlayers().size() < envoy.getConfig().MIN_PLAYERS) {
+                        failedToStart.set(true);
                         envoy.updateNext();
                         Bukkit.broadcastMessage(StringUtils.formatToString(envoy.getConfig().NOT_ENOUGH_AUTO_START));
                         return;
